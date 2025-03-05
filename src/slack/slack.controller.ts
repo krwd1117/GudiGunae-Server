@@ -16,28 +16,29 @@ export class SlackController {
     const { type, challenge, event } = req.body;
 
     if (type === 'url_verification') {
-      console.log(`Slack URL Verification 요청을 받음: ${challenge}`);
       return res.status(200).json({ challenge });
     }
 
-    // 🔹 봇이 멘션되었거나 메시지를 받은 경우 처리
-    if (event && event.type === 'app_mention') {
-      console.log(`🔹 Slack에서 멘션 수신: ${event.text}`);
-      res.status(200).send('OK'); // Slack 응답을 빠르게 반환
+    if (event.type === 'message') {
+      res.status(200).send('OK');
 
-      const command = event.text.trim().toLowerCase(); // 메시지에서 명령어 추출
+      const command = event.text.trim().toLowerCase();
 
-      // 🔹 '/help' 명령어 처리
-      if (command.includes('/help')) {
-        const helpMessage = `🤖 사용할 수 있는 명령어 목록:
-        \n• \`/help\` - 사용 가능한 명령어 목록 보기
-        \n• \`/crawl <URL>\` - 주어진 URL을 크롤링
-        \n• \`/status\` - 서버 상태 확인`;
-
+      if (command === '/help') {
+        const helpMessage = `
+🤖 사용할 수 있는 명령어 목록:
+• \`/help\` - 사용 가능한 명령어 목록 보기
+• \`/crawl\` - 미리 설정된 모든 사이트 크롤링
+        `;
         await this.slackService.sendMessage(event.channel, helpMessage);
+        return;
       }
 
-      return;
+      if (command === '/crawl') {
+        await this.slackService.sendMessage(event.channel, '🔄 모든 사이트 크롤링을 시작합니다...');
+        await this.slackService.crawlAllWebsites(event.channel);
+        return;
+      }
     }
 
     return res.sendStatus(200);

@@ -17,11 +17,25 @@ jobs:
         with:
           node-version: 18
 
-      - name: 종속성 설치
+      - name: 종속성 설치 (캐싱 포함)
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: npm 패키지 설치
         run: npm install
 
+      - name: 환경 변수 적용
+        run: cp .env.production .env
+
       - name: 빌드 실행
-        run: npm run build
+        run: |
+          npm run build || (echo "[빌드 실패] 이전 버전 유지" && exit 1)
 
       - name: PM2로 서비스 재시작
-        run: pm2 start dist/main.js --name "gudigunae-server"
+        run: |
+          pm2 delete gudigunae-server || true
+          pm2 start dist/main.js --name "gudigunae-server"
