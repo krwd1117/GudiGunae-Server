@@ -28,9 +28,6 @@ jobs:
       - name: npm 패키지 설치
         run: npm install
 
-      - name: 환경 변수 적용
-        run: cp .env.production .env
-
       - name: 빌드 실행
         run: |
           npm run build || (echo "[빌드 실패] 이전 버전 유지" && exit 1)
