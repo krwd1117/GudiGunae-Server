@@ -13,34 +13,39 @@ export class SlackController {
 
   @Post('events')
   async handleSlackEvent(@Req() req: Request, @Res() res: Response) {
-    const { type, challenge, event } = req.body;
-
-    if (type === 'url_verification') {
-      return res.status(200).json({ challenge });
-    }
-
-    if (event.type === 'message') {
-      res.status(200).send('OK');
-
-      const command = event.text.trim().toLowerCase();
-
-      if (command === '/help') {
-        const helpMessage = `
-🤖 사용할 수 있는 명령어 목록:
-• \`/help\` - 사용 가능한 명령어 목록 보기
-• \`/crawl\` - 미리 설정된 모든 사이트 크롤링
-        `;
-        await this.slackService.sendMessage(event.channel, helpMessage);
-        return;
+      const { type, challenge, event } = req.body;
+  
+      if (type === 'url_verification') {
+          return res.status(200).json({ challenge });
       }
-
-      if (command === '/crawl') {
-        await this.slackService.sendMessage(event.channel, '🔄 모든 사이트 크롤링을 시작합니다...');
-        await this.slackService.crawlAllWebsites(event.channel);
-        return;
+  
+      if (event.type === 'message') {
+          const command = event.text.trim().toLowerCase();
+  
+          // ✅ 클라이언트에게 먼저 응답을 보낸다
+          res.status(200).send('OK');
+  
+          // ✅ setImmediate를 사용해 비동기 작업을 별도로 실행
+          setImmediate(async () => {
+              try {
+                  if (command === '/help') {
+                      const helpMessage = `
+  🤖 사용할 수 있는 명령어 목록:
+  • \`/help\` - 사용 가능한 명령어 목록 보기
+  • \`/crawl\` - 미리 설정된 모든 사이트 크롤링
+                      `;
+                      await this.slackService.sendMessage(event.channel, helpMessage);
+                  } else if (command === '/crawl') {
+                      await this.slackService.crawlAllWebsites(event.channel);
+                  }
+              } catch (error) {
+                  console.error('Slack 명령 실행 중 오류 발생:', error);
+              }
+          });
+  
+          return;
       }
-    }
-
-    return res.sendStatus(200);
+  
+      return res.sendStatus(200);
   }
 }
