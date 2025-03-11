@@ -1,29 +1,30 @@
 import { Injectable } from '@nestjs/common';
 import * as puppeteer from 'puppeteer';
+import { RestaurantService } from './restaurant.service';
 
 @Injectable()
 export class CrawlerService {
   /**
-   * 식당 프로필 페이지 URL 모음
-   * 이 URL들은 식당 정보를 찾을 수 있는 메인 프로필
+   * 식당 프로필 페이지 URL과 UUID 매핑
    */
-  private profileImageUrls: Record<string, string> = {
-    '벽산더이룸': 'https://pf.kakao.com/_xdLzxgG',
-    '한신아이티': 'https://pf.kakao.com/_QRALxb',
-    '미가푸드빌': 'https://pf.kakao.com/_xjQpls',
-    '윤쉐프코오롱': 'https://pf.kakao.com/_Xxhxkhs',
-    '더이츠푸드': 'https://pf.kakao.com/_QLvRn',
-    '윤쉐프구로': 'https://pf.kakao.com/_mWmPs',
+  private profileImageUrls: Record<string, { url: string; uuid: string }> = {
+    '벽산더이룸': { url: 'https://pf.kakao.com/_xdLzxgG', uuid: '6803f840-c325-4063-817c-13884da1cfb0' },
+    '한신IT타워구내식당': { url: 'https://pf.kakao.com/_QRALxb', uuid: '7400a6dd-3356-422f-a8af-ee458085a528' },
+    '미가푸드빌': { url: 'https://pf.kakao.com/_xjQpls', uuid: '9a0817ac-9e4d-4c88-8462-852074c23db7' },
+    '윤쉐프 코오롱': { url: 'https://pf.kakao.com/_Xxhxkhs', uuid: 'ad7802ff-d8b4-436e-96d1-915c8fe2bddc' },
+    '더이츠푸드': { url: 'https://pf.kakao.com/_QLvRn', uuid: 'c3e88513-9be0-4709-a509-82d3ec5ae413' },
+    '윤쉐프-구로E&C': { url: 'https://pf.kakao.com/_mWmPs', uuid: 'cc7b8403-dd93-4988-8abe-3530e8711ba8' },
   };
 
   /**
-   * 식당 피드 페이지 URL 모음
-   * 이 URL들은 피드 형식으로 이미지를 표시하므로 다른 이미지 추출 방법 필요
+   * 식당 피드 페이지 URL과 UUID 매핑
    */
-  private feedImageUrls: Record<string, string> = {
-    '자연푸드구내식당': 'https://pf.kakao.com/_xaYxgFG/posts',
-    '푸드1번가': 'https://pf.kakao.com/_hMlAG/posts',
+  private feedImageUrls: Record<string, { url: string; uuid: string }> = {
+    '자연푸드 구내식당': { url: 'https://pf.kakao.com/_xaYxgFG/posts', uuid: '70bbe58e-efc6-40ea-aa19-d8797e4d3b36' },
+    '푸드1번가(구로)': { url: 'https://pf.kakao.com/_hMlAG/posts', uuid: 'c0754a20-82eb-4a45-8bfa-ca4fa8d068c3' },
   }
+
+  constructor(private readonly restaurantService: RestaurantService) {}
 
   /**
    * 단일 웹사이트를 크롤링하여 식당 이름과 프로필 이미지를 추출
@@ -43,18 +44,32 @@ export class CrawlerService {
   }
 
   async crawlWebsite(url: string): Promise<{ name: string; image: string }> {
-    const browser = await puppeteer.launch({
+    // 운영체제별 Puppeteer 설정
+    const launchOptions: puppeteer.LaunchOptions = {
       headless: true,
-      executablePath: '/usr/bin/chromium-browser',
       args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
         '--disable-accelerated-2d-canvas',
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
         '--disable-gpu',
         '--window-size=1920,1080'
       ]
-    });
+    };
+
+    // 리눅스(라즈베리파이)인 경우 chromium-browser 경로 지정
+    if (process.platform === 'linux') {
+      launchOptions.executablePath = '/usr/bin/chromium-browser';
+    }
+    // macOS인 경우 Chrome 경로 지정
+    else if (process.platform === 'darwin') {
+      launchOptions.executablePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+    }
+
+    console.log(`운영체제: ${process.platform}`);
+    console.log('Puppeteer 설정:', launchOptions);
+
+    const browser = await puppeteer.launch(launchOptions);
     const page = await browser.newPage();
     await page.setDefaultNavigationTimeout(90000);
     await page.setViewport({ width: 1920, height: 1080 });
@@ -96,7 +111,8 @@ export class CrawlerService {
    */
   private async extractImageUrl(page: puppeteer.Page, url: string): Promise<string> {
     // URL이 피드 페이지인지 확인
-    if (Object.values(this.feedImageUrls).includes(url)) {
+    const feedUrls = Object.values(this.feedImageUrls).map(info => info.url);
+    if (feedUrls.includes(url)) {
       return this.extractFeedImage(page);
     }
     return this.extractProfileImage(page);
@@ -133,17 +149,20 @@ export class CrawlerService {
     const successList: string[] = [];
     const failList: string[] = [];
 
-    // 프로필과 피드 컬렉션의 URL 통합
+    // URL과 UUID 정보 통합
     const allUrls = { ...this.profileImageUrls, ...this.feedImageUrls };
 
     // 각 URL 처리 및 결과 수집
-    for (const [siteName, url] of Object.entries(allUrls)) {
+    for (const [siteName, info] of Object.entries(allUrls)) {
       try {
-        const { name, image } = await this.crawlWebsite(url);
-        const successMessage = `✅ ${name} : ${image}`;
+        const { image } = await this.crawlWebsite(info.url);
+        
+        // 크롤링 성공 시 데이터베이스 업데이트 (RestaurantService 사용)
+        await this.restaurantService.updateRestaurantImage(info.uuid, image);
+        
+        const successMessage = `✅ ${siteName} : ${image}`;
         successList.push(successMessage);
         
-        // 콜백이 제공된 경우 진행 상황 알림
         if (onSiteCrawled) {
           await onSiteCrawled(siteName, { 
             success: true, 
@@ -154,7 +173,6 @@ export class CrawlerService {
         const failMessage = `❌ ${siteName}: ${error.message}`;
         failList.push(failMessage);
         
-        // 콜백이 제공된 경우 실패 알림
         if (onSiteCrawled) {
           await onSiteCrawled(siteName, { 
             success: false, 
