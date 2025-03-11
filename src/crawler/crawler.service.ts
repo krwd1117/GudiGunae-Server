@@ -66,9 +66,6 @@ export class CrawlerService {
       launchOptions.executablePath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
     }
 
-    console.log(`운영체제: ${process.platform}`);
-    console.log('Puppeteer 설정:', launchOptions);
-
     const browser = await puppeteer.launch(launchOptions);
     const page = await browser.newPage();
     await page.setDefaultNavigationTimeout(90000);

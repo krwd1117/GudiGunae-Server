@@ -94,8 +94,7 @@ export class RestaurantService {
       const { data: updatedData, error: updateError } = await this.supabase
         .from('restaurants')
         .update({ 
-          image_url: imageUrl,
-          updated_at: new Date().toISOString()
+          image_url: imageUrl
         })
         .eq('id', uuid)
         .select()
