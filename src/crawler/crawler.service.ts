@@ -8,11 +8,11 @@ export class CrawlerService {
    * 이 URL들은 식당 정보를 찾을 수 있는 메인 프로필
    */
   private profileImageUrls: Record<string, string> = {
-    '벽산더이룸': 'http://pf.kakao.com/_xdLzxgG',
-    '한신아이티': 'http://pf.kakao.com/_QRALxb',
+    '벽산더이룸': 'https://pf.kakao.com/_xdLzxgG',
+    '한신아이티': 'https://pf.kakao.com/_QRALxb',
     '미가푸드빌': 'https://pf.kakao.com/_xjQpls',
     '윤쉐프코오롱': 'https://pf.kakao.com/_Xxhxkhs',
-    '더이츠푸드': 'http://pf.kakao.com/_QLvRn',
+    '더이츠푸드': 'https://pf.kakao.com/_QLvRn',
     '윤쉐프구로': 'https://pf.kakao.com/_mWmPs',
   };
 
@@ -28,13 +28,47 @@ export class CrawlerService {
   /**
    * 단일 웹사이트를 크롤링하여 식당 이름과 프로필 이미지를 추출
    */
+  private async retryOperation<T>(operation: () => Promise<T>, maxRetries: number = 3): Promise<T> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        console.log(`재시도 ${attempt}/${maxRetries}: ${error.message}`);
+        if (attempt === maxRetries) throw error;
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    throw new Error('최대 재시도 횟수 초과');
+  }
+
   async crawlWebsite(url: string): Promise<{ name: string; image: string }> {
-    const browser = await puppeteer.launch({ headless: true });
+    const browser = await puppeteer.launch({
+      headless: true,
+      executablePath: '/usr/bin/chromium-browser',
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--window-size=1920,1080'
+      ]
+    });
     const page = await browser.newPage();
+    await page.setDefaultNavigationTimeout(90000);
+    await page.setViewport({ width: 1920, height: 1080 });
 
     try {
       console.log(`🔍 크롤링 시작: ${url}`);
-      await page.goto(url, { waitUntil: 'networkidle2' });
+      await this.retryOperation(async () => {
+        await page.goto(url, { 
+          waitUntil: ['networkidle2', 'domcontentloaded'],
+          timeout: 90000
+        });
+        // 페이지 로딩을 위한 대기
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      });
 
       // 프로필 페이지에서 식당 이름 추출
       const name = await this.extractRestaurantName(page);
