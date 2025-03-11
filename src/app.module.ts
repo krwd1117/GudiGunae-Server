@@ -1,10 +1,16 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { SlackModule } from './slack/slack.module'; // SlackModule 추가
+import { CrawlerModule } from './crawler/crawler.module';
+import { SlackModule } from './slack/slack.module';
 
 @Module({
-  imports: [SlackModule], // SlackModule을 imports에 포함
+  imports: [
+    ScheduleModule.forRoot(),
+    CrawlerModule,
+    SlackModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

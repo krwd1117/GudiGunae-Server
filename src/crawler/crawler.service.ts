@@ -1,9 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as puppeteer from 'puppeteer';
 import { RestaurantService } from './restaurant.service';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class CrawlerService {
+  private readonly logger = new Logger(CrawlerService.name);
+
   /**
    * 식당 프로필 페이지 URL과 UUID 매핑
    */
@@ -142,7 +145,10 @@ export class CrawlerService {
   /**
    * 등록된 모든 웹사이트를 크롤링하고 정보를 수집
    */
-  async crawlAllWebsites(onSiteCrawled?: (siteName: string, result: { success: boolean; message: string }) => Promise<void>): Promise<{ success: string[]; fail: string[] }> {
+  async crawlAllWebsites(
+    channel: string,
+    onSiteCrawled?: (siteName: string, result: { success: boolean; message: string }) => Promise<void>
+  ): Promise<{ success: string[]; fail: string[] }> {
     const successList: string[] = [];
     const failList: string[] = [];
 
@@ -180,5 +186,30 @@ export class CrawlerService {
     }
 
     return { success: successList, fail: failList };
+  }
+
+  @Cron('0 7 * * 1-5', {
+    timeZone: 'Asia/Seoul'
+  })
+  async handleCronCrawling() {
+    this.logger.debug('크롤링 작업 시작 - 매주 평일 오전 7시');
+    try {
+      const result = await this.crawlAllWebsites('gudigunae', async (siteName, result) => {
+        if (result.success) {
+          this.logger.log(`${siteName} 크롤링 성공`);
+        } else {
+          this.logger.error(`${siteName} 크롤링 실패: ${result.message}`);
+        }
+      });
+      
+      this.logger.log(`크롤링 완료 - 성공: ${result.success.length}개, 실패: ${result.fail.length}개`);
+    } catch (error) {
+      this.logger.error('크롤링 중 오류 발생:', error);
+    }
+  }
+
+  private async startCrawling() {
+    // 실제 크롤링 로직 구현
+    this.logger.log('크롤링 실행 중...');
   }
 }

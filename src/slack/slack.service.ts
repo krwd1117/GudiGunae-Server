@@ -24,6 +24,7 @@ export class SlackService {
     await this.sendMessage(channel, '🔄 모든 사이트 크롤링을 시작합니다...');
 
     const { success, fail } = await this.crawlerService.crawlAllWebsites(
+      channel,
       async (siteName: string, result: { success: boolean; message: string }) => {
         // Send real-time updates for each site
         await this.sendMessage(channel, `${siteName} 크롤링 결과:\n${result.message}`);
