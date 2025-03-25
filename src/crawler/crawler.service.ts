@@ -25,6 +25,7 @@ export class CrawlerService {
   private feedImageUrls: Record<string, { url: string; uuid: string }> = {
     '자연푸드 구내식당': { url: 'https://pf.kakao.com/_xaYxgFG/posts', uuid: '70bbe58e-efc6-40ea-aa19-d8797e4d3b36' },
     '푸드1번가(구로)': { url: 'https://pf.kakao.com/_hMlAG/posts', uuid: 'c0754a20-82eb-4a45-8bfa-ca4fa8d068c3' },
+    '우림더이룸푸드': { url: 'https://pf.kakao.com/_hBxoxjG/posts', uuid: '6803f840-c325-4063-817c-13884da1cfb0' },
   }
 
   constructor(private readonly restaurantService: RestaurantService) {}
@@ -189,7 +190,8 @@ export class CrawlerService {
   }
 
   @Cron('0 7 * * 1-5', {
-    timeZone: 'Asia/Seoul'
+    timeZone: 'Asia/Seoul',
+    name: 'daily-menu-crawling'
   })
   async handleCronCrawling() {
     this.logger.debug('크롤링 작업 시작 - 매주 평일 오전 7시');
