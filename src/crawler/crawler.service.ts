@@ -156,8 +156,8 @@ export class CrawlerService {
     // URL과 UUID 정보 통합
     const allUrls = { ...this.profileImageUrls, ...this.feedImageUrls };
 
-    // 각 URL 처리 및 결과 수집
-    for (const [siteName, info] of Object.entries(allUrls)) {
+    // 병렬 처리를 위한 Promise 배열 생성
+    const crawlingPromises = Object.entries(allUrls).map(async ([siteName, info]) => {
       try {
         const { image } = await this.crawlWebsite(info.url);
         
@@ -183,8 +183,18 @@ export class CrawlerService {
             message: failMessage 
           });
         }
+
+        // 에러 로깅 강화
+        this.logger.error(`크롤링 실패 - ${siteName}:`, {
+          error: error.message,
+          stack: error.stack,
+          url: info.url
+        });
       }
-    }
+    });
+
+    // 모든 크롤링 작업을 병렬로 실행
+    await Promise.all(crawlingPromises);
 
     return { success: successList, fail: failList };
   }
