@@ -8,6 +8,8 @@ on:
 jobs:
   deploy:
     runs-on: self-hosted
+    environment: SLACK_WEBHOOK_URL
+
     steps:
       - name: 저장소 체크아웃
         uses: actions/checkout@v4
@@ -23,16 +25,21 @@ jobs:
       - name: NestJS 빌드
         run: npm run build
 
-      - name: 서비스 재시작 (PM2)
+      - name: PM2 서비스 재시작
         run: |
-          pm2 describe gudigunae-server > /dev/null \
-          && pm2 restart gudigunae-server \
-          || pm2 start dist/main.js --name gudigunae-server
+          pm2 restart gudigunae-server
           pm2 save
-          
+
       - name: Slack 알림 전송 (성공)
         if: success()
         run: |
           curl -X POST -H 'Content-type: application/json' \
-          --data '{"text":"✅ NestJS 서버 배포 성공 on M1 맥 미니 🎉"}' \
+          --data '{"text":"✅ NestJS 서버 배포 성공 (재시작 완료) on M1 맥 미니 🎉"}' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Slack 알림 전송 (실패)
+        if: failure()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"❌ NestJS 서버 배포 실패... PM2 재시작 확인 필요 🔥"}' \
           ${{ secrets.SLACK_WEBHOOK_URL }}
