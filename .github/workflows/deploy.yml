@@ -1,4 +1,4 @@
-name: Deploy NestJS on Merge
+name: Deploy NestJS to M1 Mac mini
 
 on:
   push:
@@ -17,25 +17,12 @@ jobs:
         with:
           node-version: 18
 
-      - name: 종속성 설치 (캐싱 포함)
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+      - name: 패키지 설치
+        run: npm ci
 
-      - name: npm 패키지 설치
-        run: npm install
+      - name: NestJS 빌드
+        run: npm run build
 
-      - name: 빌드 실행
-        run: |
-          npm run build || (echo "[빌드 실패] 이전 버전 유지" && exit 1)
-
-      - name: PM2 실행을 위한 PATH 추가
-        run: echo "/home/krwd1117/.npm-global/bin" >> $GITHUB_PATH
-
-      - name: PM2로 서비스 재시작
+      - name: 서비스 재시작 (PM2)
         run: |
           pm2 delete gudigunae-server || true
-          pm2 start dist/main.js --name "gudigunae-server"
