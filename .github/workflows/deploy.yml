@@ -26,3 +26,9 @@ jobs:
       - name: 서비스 재시작 (PM2)
         run: |
           pm2 delete gudigunae-server || true
+      - name: Slack 알림 전송 (성공)
+        if: success()
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"✅ NestJS 서버 배포 성공 on M1 맥 미니 🎉"}' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
