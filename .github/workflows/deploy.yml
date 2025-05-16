@@ -25,7 +25,11 @@ jobs:
 
       - name: 서비스 재시작 (PM2)
         run: |
-          pm2 delete gudigunae-server || true
+          pm2 describe gudigunae-server > /dev/null \
+          && pm2 restart gudigunae-server \
+          || pm2 start dist/main.js --name gudigunae-server
+          pm2 save
+          
       - name: Slack 알림 전송 (성공)
         if: success()
         run: |
