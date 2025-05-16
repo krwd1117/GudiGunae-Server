@@ -23,6 +23,9 @@ export class CrawlerService {
    * 식당 피드 페이지 URL과 UUID 매핑
    */
   private feedImageUrls: Record<string, { url: string; uuid: string }> = {
+    '구로 e스페이스 더드림푸드': { url: 'https://pf.kakao.com/_lPpZn/posts', uuid: '2c558a91-c256-4128-bfad-6f2d78bf8189' },
+    '알찬푸드': { url: 'https://pf.kakao.com/_wbeAn/posts', uuid: 'f037605c-bbee-47fb-87b9-9fd1c2978a3b' },
+    '아티스테이블': { url: 'https://pf.kakao.com/_ixetln/posts', uuid: '6466846f-9a8a-4d45-b524-8a37a465468e' },
     '자연푸드 구내식당': { url: 'https://pf.kakao.com/_xaYxgFG/posts', uuid: '70bbe58e-efc6-40ea-aa19-d8797e4d3b36' },
     '푸드1번가(구로)': { url: 'https://pf.kakao.com/_hMlAG/posts', uuid: 'c0754a20-82eb-4a45-8bfa-ca4fa8d068c3' },
     '우림더이룸푸드': { url: 'https://pf.kakao.com/_hBxoxjG/posts', uuid: 'f791021a-0500-4a6c-86eb-7da2f39e8112' },
@@ -199,12 +202,12 @@ export class CrawlerService {
     return { success: successList, fail: failList };
   }
 
-  @Cron('0 7 * * 1-5', {
+  @Cron('0 11 * * 1-5', {
     timeZone: 'Asia/Seoul',
     name: 'daily-menu-crawling'
   })
   async handleCronCrawling() {
-    this.logger.debug('크롤링 작업 시작 - 매주 평일 오전 7시');
+    this.logger.debug('크롤링 작업 시작 - 매주 평일 오전 11시');
     try {
       const result = await this.crawlAllWebsites('gudigunae', async (siteName, result) => {
         if (result.success) {
@@ -218,10 +221,5 @@ export class CrawlerService {
     } catch (error) {
       this.logger.error('크롤링 중 오류 발생:', error);
     }
-  }
-
-  private async startCrawling() {
-    // 실제 크롤링 로직 구현
-    this.logger.log('크롤링 실행 중...');
   }
 }
