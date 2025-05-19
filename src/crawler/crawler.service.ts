@@ -1,7 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import * as puppeteer from 'puppeteer';
 import { RestaurantService } from './restaurant.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
+
+import { SlackService } from '../slack/slack.service';
 
 @Injectable()
 export class CrawlerService {
@@ -31,7 +33,12 @@ export class CrawlerService {
     '우림더이룸푸드': { url: 'https://pf.kakao.com/_hBxoxjG/posts', uuid: 'f791021a-0500-4a6c-86eb-7da2f39e8112' },
   }
 
-  constructor(private readonly restaurantService: RestaurantService) {}
+  constructor(
+  private readonly restaurantService: RestaurantService,
+  @Inject(forwardRef(() => SlackService))
+  private readonly slackService: SlackService,
+) {}
+
 
   /**
    * 단일 웹사이트를 크롤링하여 식당 이름과 프로필 이미지를 추출
@@ -149,7 +156,7 @@ export class CrawlerService {
   /**
    * 등록된 모든 웹사이트를 크롤링하고 정보를 수집
    */
-  async crawlAllWebsites(
+  async crawlAllRegisteredSites(
     channel: string,
     onSiteCrawled?: (siteName: string, result: { success: boolean; message: string }) => Promise<void>
   ): Promise<{ success: string[]; fail: string[] }> {
@@ -201,25 +208,15 @@ export class CrawlerService {
 
     return { success: successList, fail: failList };
   }
-
-  @Cron('0 11 * * 1-5', {
-    timeZone: 'Asia/Seoul',
-    name: 'daily-menu-crawling'
-  })
+  
+  @Cron(CronExpression.EVERY_DAY_AT_11AM)
   async handleCronCrawling() {
-    this.logger.debug('크롤링 작업 시작 - 매주 평일 오전 11시');
+    this.logger.debug('크롤링 작업 시작 - 매일 오전 11시');
     try {
-      const result = await this.crawlAllWebsites('gudigunae', async (siteName, result) => {
-        if (result.success) {
-          this.logger.log(`${siteName} 크롤링 성공`);
-        } else {
-          this.logger.error(`${siteName} 크롤링 실패: ${result.message}`);
-        }
-      });
-      
-      this.logger.log(`크롤링 완료 - 성공: ${result.success.length}개, 실패: ${result.fail.length}개`);
+      // 슬랙으로 바로 결과 전송
+      await this.slackService.crawlAllSitesAndNotifySlack('gudigunae');
     } catch (error) {
-      this.logger.error('크롤링 중 오류 발생:', error);
+      this.logger.error('크론 크롤링/슬랙 전송 중 오류 발생:', error);
     }
   }
 }

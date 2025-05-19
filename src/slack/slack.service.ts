@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import axios from 'axios';
 import { CrawlerService } from '../crawler/crawler.service';
 
@@ -6,28 +6,33 @@ import { CrawlerService } from '../crawler/crawler.service';
 export class SlackService {
   private slackToken = process.env.SLACK_BOT_TOKEN;
 
-  constructor(private readonly crawlerService: CrawlerService) {}
+  constructor(
+  @Inject(forwardRef(() => CrawlerService))
+  private readonly crawlerService: CrawlerService,
+) {}
 
   async sendMessage(channel: string, text: string) {
     try {
-      await axios.post(
+      console.log(`[SlackService] Slack 메시지 전송 시도: 채널=${channel}, 내용=${text}`);
+      const response = await axios.post(
         'https://slack.com/api/chat.postMessage',
         { channel, text },
         { headers: { Authorization: `Bearer ${this.slackToken}` } }
       );
+      console.log(`[SlackService] Slack API 응답:`, response.data);
     } catch (error) {
       console.error(`❌ Slack 메시지 전송 오류:`, error);
     }
   }
 
-  async crawlAllWebsites(channel: string): Promise<void> {
+  async crawlAllSitesAndNotifySlack(channel: string): Promise<void> {
     await this.sendMessage(channel, '🔄 모든 사이트 크롤링을 시작합니다...');
 
-    const { success, fail } = await this.crawlerService.crawlAllWebsites(
+    const { success, fail } = await this.crawlerService.crawlAllRegisteredSites(
       channel,
       async (siteName: string, result: { success: boolean; message: string }) => {
         // Send real-time updates for each site
-        await this.sendMessage(channel, `${siteName} 크롤링 결과:\n${result.message}`);
+        // await this.sendMessage(channel, `${siteName} 크롤링 결과:\n${result.message}`);
       }
     );
 

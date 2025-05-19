@@ -46,7 +46,7 @@ export class SlackController {
                     } 
                     // 크롤링 명령어 처리
                     else if (command === '/crawl') {
-                        await this.slackService.crawlAllWebsites(event.channel);
+                        await this.slackService.crawlAllSitesAndNotifySlack(event.channel);
                     }
                 } catch (error) {
                     console.error('Slack 명령 실행 중 오류 발생:', error);
