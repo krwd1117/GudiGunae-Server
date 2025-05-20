@@ -5,6 +5,9 @@ on:
     branches:
       - develop
 
+env:
+  PROJECT_DIR: /Users/krwd/Develop/GudiGunae-Server
+
 jobs:
   deploy:
     runs-on: self-hosted
@@ -19,11 +22,20 @@ jobs:
         with:
           node-version: 18
 
+      - name: 서버 코드 pull
+        run: |
+          cd ${{ env.PROJECT_DIR }}
+          git pull origin develop
+
       - name: 패키지 설치
-        run: npm ci
+        run: 
+          cd ${{ env.PROJECT_DIR }}
+          npm ci
 
       - name: NestJS 빌드
-        run: npm run build
+        run: 
+          cd ${{ env.PROJECT_DIR }}
+          npm run build
 
       - name: PM2 서비스 재시작
         run: |
