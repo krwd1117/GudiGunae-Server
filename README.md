@@ -18,6 +18,7 @@ docker run -d -p 8080:8080 --restart always --name gudigunae gudigunae-server
 [토큰] 대신 `Settings -> Actions -> Runners -> New self-hosted runner`의 토큰 값 입력
 ``` bash
 docker run -d --restart always --name gudigunae-server \
+-e RUNNER_NAME="gudiGunae-server-runner" \
 -e REPO_URL=https://github.com/krwd1117/gudiGunae-server \
 -e RUNNER_TOKEN=[토큰] \
 -v /var/run/docker.sock:/var/run/docker.sock \
